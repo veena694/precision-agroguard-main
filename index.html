@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agroguard</title>
+  </head>
+
+  <body>
+    <div id="root"></div>
+
+    <style>
+      #omni-open-widget-btn {
+        left: auto !important;
+        right: calc(16px + env(safe-area-inset-right, 0px)) !important;
+        bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+        z-index: 11000 !important;
+      }
+
+      #chat-iframe-container {
+        left: auto !important;
+        right: calc(16px + env(safe-area-inset-right, 0px)) !important;
+        bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+        width: min(400px, calc(100vw - 32px)) !important;
+        max-width: calc(100vw - 32px) !important;
+        z-index: 11000 !important;
+      }
+
+      #chat-iframe-container > div {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 18px !important;
+        overflow: hidden !important;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18) !important;
+      }
+
+      #chat-iframe-container iframe {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: min(560px, calc(100vh - 136px)) !important;
+        max-height: calc(100vh - 136px) !important;
+        border-radius: 18px !important;
+      }
+
+      @media (max-width: 768px) {
+        #omni-open-widget-btn {
+          right: calc(12px + env(safe-area-inset-right, 0px)) !important;
+          bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+        }
+
+        #chat-iframe-container {
+          left: 12px !important;
+          right: 12px !important;
+          bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+          width: auto !important;
+          max-width: none !important;
+        }
+
+        #chat-iframe-container > div,
+        #chat-iframe-container iframe {
+          border-radius: 16px !important;
+        }
+
+        #chat-iframe-container iframe {
+          height: min(70vh, calc(100vh - 116px)) !important;
+          max-height: calc(100vh - 116px) !important;
+        }
+      }
+    </style>
+    <script
+      id="omnidimension-web-widget"
+      async
+      src="https://omnidim.io/web_widget.js?secret_key=fc46e37671d23588fdd66b89a3c6535e"
+    ></script>
+    <script type="module" src="/frontend/App.tsx"></script>
+  </body>
+</html>
