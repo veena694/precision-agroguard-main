@@ -29,6 +29,7 @@ export default function Index() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [showAllAlerts, setShowAllAlerts] = useState(false);
   const selectedCrop = cropOptions.find((crop) => crop.id === cropId) ?? null;
 
   const formatLabel = (label: string) => {
@@ -611,7 +612,7 @@ export default function Index() {
 
                   <div className="divide-y divide-border">
                     {alerts.length > 0 ? (
-                      alerts.map((alert, idx) => (
+                      (showAllAlerts ? alerts : alerts.slice(0, 6)).map((alert, idx) => (
                         <div key={idx} className="p-4 hover:bg-muted/50 transition-colors">
                           <div className="flex items-center justify-between mb-1">
                             <p className="font-medium text-foreground">{alert.field}</p>
@@ -626,6 +627,19 @@ export default function Index() {
                       </div>
                     )}
                   </div>
+                  
+                  {alerts.length > 6 && (
+                    <div className="p-3 border-t border-border text-center">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-primary font-semibold"
+                        onClick={() => setShowAllAlerts(!showAllAlerts)}
+                      >
+                        {showAllAlerts ? "View Less" : `View More (${alerts.length - 6} more)`}
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
               </div>
