@@ -655,7 +655,7 @@ export default function Index() {
                         <ol className="list-decimal ml-4 space-y-1">
                           <li><strong>Easiest:</strong> Use <a href={window.location.href.replace('https://', 'http://')} className="underline font-bold text-amber-700">HTTP Version</a> of this site. This allows your browser to talk directly to your hardware.</li>
                           <li><strong>Best:</strong> Use <a href="https://ngrok.com" target="_blank" rel="noreferrer" className="underline font-bold text-amber-700">ngrok</a>. Run it on your PC to get a public URL (e.g., <code>https://your-id.ngrok.app</code>) and paste it below.</li>
-                          <li><strong>Settings:</strong> Click the "Lock" icon in your browser address bar -> Site Settings -> allow <strong>"Insecure content"</strong>.</li>
+                          <li><strong>Settings:</strong> Click the "Lock" icon in your browser address bar &rarr; Site Settings &rarr; allow <strong>"Insecure content"</strong>.</li>
                         </ol>
                       </div>
                     </div>
