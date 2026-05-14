@@ -35,17 +35,17 @@ router.post("/", async (req, res) => {
       res.json({ message: "Spray triggered and logged", status: "success" });
     } catch (hwError) {
       console.error("Hardware trigger failed:", hwError.message);
-      
+
       // If it's a local IP and we're in production, it's a known limitation
       const isLocalIp = ESP32_IP.includes("192.168.") || ESP32_IP.includes("10.") || ESP32_IP.includes("localhost");
-      const errorMsg = isLocalIp 
+      const errorMsg = isLocalIp
         ? "Hardware unreachable (Local IP detected in cloud deployment). Please use a public URL or ngrok."
         : `Hardware unreachable: ${hwError.message}`;
-        
-      res.json({ 
-        message: "Logged to database, but hardware trigger failed", 
+
+      res.json({
+        message: "Logged to database, but hardware trigger failed",
         error: errorMsg,
-        status: "partial_success" 
+        status: "partial_success"
       });
     }
   } catch (error) {

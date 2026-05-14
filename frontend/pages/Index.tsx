@@ -41,7 +41,7 @@ export default function Index() {
   const [showDeviceModal, setShowDeviceModal] = useState(false);
   const [deviceConnected, setDeviceConnected] = useState(false);
   const [deviceName, setDeviceName] = useState("");
-  const [esp32Ip, setEsp32Ip] = useState("192.168.0.105");
+  const [esp32Ip, setEsp32Ip] = useState("10.57.42.207");
   const [cameraMode, setCameraMode] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
