@@ -16,16 +16,17 @@ router.post("/connect", (req, res) => {
 });
 
 router.post("/", async (req, res) => {
+  console.log("POST /api/spray called with body:", req.body);
   try {
-    const { duration } = req.body;
+    const { duration, crop_name, disease_name, infection_level, spray_type } = req.body;
 
     // Send command to ESP32
     await axios.get(`${ESP32_IP}/spray?time=${duration}`);
 
     // Store log in DB
     await pool.query(
-      `INSERT INTO spray_logs (duration) VALUES ($1)`,
-      [duration]
+      `INSERT INTO spray_logs (duration, crop_name, disease_name, infection_level, spray_type) VALUES ($1, $2, $3, $4, $5)`,
+      [duration, crop_name || null, disease_name || null, infection_level || null, spray_type || 'Manual']
     );
 
     res.json({ message: "Spray triggered" });

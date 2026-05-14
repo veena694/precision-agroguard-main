@@ -35,7 +35,13 @@ class AnalysisService {
       if (!this.sessions[name]) {
         const modelPath = path.join(MODELS_DIR, config.file);
         console.log(`Loading model: ${name} from ${modelPath}`);
-        this.sessions[name] = await ort.InferenceSession.create(modelPath);
+        try {
+          this.sessions[name] = await ort.InferenceSession.create(modelPath);
+          console.log(`Successfully loaded model: ${name}`);
+        } catch (loadError) {
+          console.error(`FAILED to load model ${name}:`, loadError);
+          // Don't throw, try to load other models
+        }
       }
     }
   }
@@ -78,6 +84,7 @@ class AnalysisService {
   async analyze(imageBuffer) {
     try {
       console.log("Starting analysis...");
+      const totalStartTime = Date.now();
       await this.init();
       
       const tensorNCHW = await this.preprocess(imageBuffer, 'NCHW');
@@ -132,7 +139,8 @@ class AnalysisService {
       return {
         topResults: results,
         recommendSpray: results[0].percent >= 20 && !results[0].name.includes('healthy'),
-        infectionLevel: results[0].percent >= 65 ? "HIGH" : results[0].percent >= 40 ? "MEDIUM" : "LOW"
+        infectionLevel: results[0].percent >= 65 ? "HIGH" : results[0].percent >= 40 ? "MEDIUM" : "LOW",
+        analysisTimeMs: Date.now() - totalStartTime
       };
     } catch (error) {
       console.error("ANALYSIS SERVICE ERROR:", error);

@@ -2,13 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera, AlertCircle, Droplets, Leaf, TrendingDown, Zap, X, Check, Cpu, Wifi, Video } from "lucide-react";
 
-type CropOption = {
-  id: string;
-  crop_name: string;
-  crop_variety: string | null;
-  planting_date: string | null;
-};
-
 const SPRAY_CONFIG: Record<string, { LOW: number; MEDIUM: number; HIGH: number }> = {
   "tomato/early_blight": { LOW: 2, MEDIUM: 4, HIGH: 6 },
   "tomato/late_blight": { LOW: 3, MEDIUM: 5, HIGH: 8 },
@@ -19,7 +12,7 @@ const SPRAY_CONFIG: Record<string, { LOW: number; MEDIUM: number; HIGH: number }
   "tomato/spider_mites": { LOW: 3, MEDIUM: 5, HIGH: 7 },
   "tomato/target_spot": { LOW: 2, MEDIUM: 4, HIGH: 6 },
   "tomato/yellowleaf_curl_virus": { LOW: 3, MEDIUM: 5, HIGH: 7 },
-  
+
   "potato/bacteria": { LOW: 2, MEDIUM: 4, HIGH: 6 },
   "potato/early_blight": { LOW: 2, MEDIUM: 4, HIGH: 6 },
   "potato/fungi": { LOW: 2, MEDIUM: 4, HIGH: 6 },
@@ -38,9 +31,6 @@ const SPRAY_CONFIG: Record<string, { LOW: number; MEDIUM: number; HIGH: number }
 };
 
 export default function Index() {
-  const [cropOptions, setCropOptions] = useState<CropOption[]>([]);
-  const [cropId, setCropId] = useState("");
-  const [cropVariety, setCropVariety] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>("");
   const [analyzing, setAnalyzing] = useState(false);
@@ -58,7 +48,6 @@ export default function Index() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [showAllAlerts, setShowAllAlerts] = useState(false);
-  const selectedCrop = cropOptions.find((crop) => crop.id === cropId) ?? null;
 
   const formatLabel = (label: string) => {
     if (!label) return "N/A";
@@ -76,7 +65,7 @@ export default function Index() {
     return config[level as keyof typeof config] || config.MEDIUM;
   };
 
-  const triggerSpray = async (seconds: number) => {
+  const triggerSpray = async (seconds: number, details: any = {}) => {
     setLiveMode(true);
     setSprayRemaining(seconds);
 
@@ -85,7 +74,6 @@ export default function Index() {
     }
 
     try {
-      // Start countdown
       sprayIntervalRef.current = setInterval(() => {
         setSprayRemaining((prev) => {
           if (prev <= 1) {
@@ -97,10 +85,16 @@ export default function Index() {
         });
       }, 1000);
 
+      const payload = {
+        duration: seconds,
+        ...details
+      };
+      console.log("Triggering spray with payload:", payload);
+
       await fetch("/api/spray", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ duration: seconds })
+        body: JSON.stringify(payload)
       });
     } catch (error) {
       console.error("Failed to trigger spray:", error);
@@ -111,23 +105,6 @@ export default function Index() {
   };
 
   useEffect(() => {
-    const loadCrops = async () => {
-      try {
-        const response = await fetch("/api/crops");
-
-        if (!response.ok) {
-          throw new Error("Failed to load crops");
-        }
-
-        const crops = await response.json();
-        setCropOptions(crops);
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
-    loadCrops();
-
     const fetchAlerts = async () => {
       try {
         const response = await fetch("/api/images/history/recent");
@@ -138,12 +115,12 @@ export default function Index() {
           const date = new Date(item.detected_at);
           const now = new Date();
           const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          
+
           const isToday = date.toDateString() === now.toDateString();
           const yesterday = new Date(now);
           yesterday.setDate(now.getDate() - 1);
           const isYesterday = date.toDateString() === yesterday.toDateString();
-          
+
           let timestamp = `${timeStr} ${date.toLocaleDateString([], { day: '2-digit', month: 'short' })}`;
           if (isToday) timestamp = `${timeStr} Today`;
           else if (isYesterday) timestamp = `${timeStr} Yesterday`;
@@ -163,10 +140,6 @@ export default function Index() {
 
     fetchAlerts();
   }, []);
-
-  useEffect(() => {
-    setCropVariety(selectedCrop?.crop_variety ?? "");
-  }, [selectedCrop]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -215,6 +188,7 @@ export default function Index() {
       setCameraMode(false);
     }
   };
+
   const uploadImage = async () => {
     if (!selectedFile) {
       alert("Please select an image first");
@@ -226,7 +200,6 @@ export default function Index() {
     try {
       const formData = new FormData();
       formData.append("image", selectedFile);
-      formData.append("crop_id", cropId);
 
       const response = await fetch("/api/images/upload", {
         method: "POST",
@@ -243,7 +216,7 @@ export default function Index() {
       if (data.analysis && !data.analysis.error) {
         const top = data.analysis.topResults;
         setResult({
-          cropType: data.crop_name || selectedCrop?.crop_name || "Unknown Crop",
+          cropType: data.crop_name || "Unknown Crop",
           disease1: top[0] || { name: "N/A", percent: 0 },
           disease2: top[1] || { name: "N/A", percent: 0 },
           disease3: top[2] || { name: "N/A", percent: 0 },
@@ -252,7 +225,7 @@ export default function Index() {
         });
       } else {
         setResult({
-          cropType: data.crop_name || selectedCrop?.crop_name || "Unknown Crop",
+          cropType: data.crop_name || "Unknown Crop",
           disease1: { name: "Analysis Failed", percent: 0 },
           disease2: { name: "Please try again", percent: 0 },
           disease3: { name: "N/A", percent: 0 },
@@ -262,16 +235,13 @@ export default function Index() {
       }
 
     } catch (error) {
-
       console.error(error);
       alert("Upload failed");
-
     } finally {
-
       setAnalyzing(false);
-
     }
   };
+
   const getErrorMessage = (error: any): string => {
     switch (error.name) {
       case "NotAllowedError":
@@ -321,12 +291,9 @@ export default function Index() {
     }
   };
 
-
-
   const handleCapture = async () => {
     if (!selectedFile) return;
     setAnalyzing(true);
-    // Mock inference - in production, this would call the Django API
     setTimeout(() => {
       setResult({
         cropType: "Tomato Leaf",
@@ -340,19 +307,14 @@ export default function Index() {
     }, 2000);
   };
 
-  // Hardware Connection Logic uses ESP32 IP input instead of Bluetooth scanning
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 via-background to-background">
-      {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
-                {/* Leaf */}
                 <path d="M12 2C12 2 8 6 8 12C8 16.4183 9.79086 20 12 20C14.2091 20 16 16.4183 16 12C16 6 12 2 12 2Z" fill="currentColor" />
-                {/* Gear */}
                 <g transform="translate(14, 12) scale(0.6)">
                   <circle cx="0" cy="0" r="4" fill="none" stroke="currentColor" strokeWidth="2" />
                   <circle cx="0" cy="0" r="1.5" fill="currentColor" />
@@ -387,7 +349,14 @@ export default function Index() {
               onClick={() => {
                 if (!liveMode) {
                   const time = result ? getSprayTime(result.disease1.name, result.infectionLevel) : 5;
-                  triggerSpray(time);
+                  triggerSpray(time, result ? {
+                    crop_name: result.cropType,
+                    disease_name: result.disease1.name,
+                    infection_level: result.infectionLevel,
+                    spray_type: 'Live Mode'
+                  } : {
+                    spray_type: 'Manual'
+                  });
                 } else {
                   setLiveMode(false);
                   setSprayRemaining(0);
@@ -406,9 +375,7 @@ export default function Index() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container py-8">
-        {/* Hero Section */}
         <section className="mb-12">
           <div className="mx-auto max-w-3xl text-center mb-8">
             <h2 className="text-4xl font-bold text-foreground mb-4">
@@ -420,10 +387,7 @@ export default function Index() {
           </div>
         </section>
 
-
-        {/* Camera & Analysis Section */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          {/* Camera Capture */}
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="bg-gradient-to-r from-primary/10 to-secondary/10 p-6 border-b border-border">
               <div className="flex items-center gap-2 mb-2">
@@ -431,17 +395,16 @@ export default function Index() {
                 <h3 className="text-xl font-semibold text-foreground">Analyze Crop</h3>
               </div>
               <p className="text-sm text-muted-foreground">
-                Choose a crop, then capture or upload a crop photo
+                Capture or upload a crop photo for AI analysis
               </p>
             </div>
-
 
             <div className="p-6">
               <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-6 text-center">
                 <Leaf className="h-8 w-8 text-primary mx-auto mb-3" />
                 <h4 className="font-semibold text-foreground mb-1">Auto-Detection Enabled</h4>
                 <p className="text-sm text-muted-foreground">
-                  Our AI ensemble will automatically identify your crop type and detect any diseases from the uploaded image.
+                  Our AI ensemble will automatically identify your crop type and detect any diseases from the image.
                 </p>
               </div>
 
@@ -457,23 +420,12 @@ export default function Index() {
                           className="hidden"
                           id="photo-input"
                         />
-
-                        <label
-                          htmlFor="photo-input"
-                          className="block cursor-pointer"
-                        >
+                        <label htmlFor="photo-input" className="block cursor-pointer">
                           <Camera className="h-12 w-12 text-primary/30 mx-auto mb-3" />
-                          <p className="font-medium text-foreground mb-1">
-                            Click to upload photo
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            or drag and drop
-                          </p>
+                          <p className="font-medium text-foreground mb-1">Click to upload photo</p>
+                          <p className="text-sm text-muted-foreground">or drag and drop</p>
                         </label>
                       </div>
-                      <p className="text-xs text-muted-foreground text-center">
-                        Supports JPG, PNG, GIF up to 10MB
-                      </p>
                       <div className="relative">
                         <div className="absolute inset-0 flex items-center">
                           <div className="w-full border-t border-border" />
@@ -482,72 +434,35 @@ export default function Index() {
                           <span className="bg-card px-2 text-muted-foreground">OR</span>
                         </div>
                       </div>
-                      <Button
-                        onClick={() => setCameraMode(true)}
-                        variant="outline"
-                        className="w-full"
-                      >
+                      <Button onClick={() => setCameraMode(true)} variant="outline" className="w-full">
                         <Video className="h-4 w-4 mr-2" />
                         Take Photo with Camera
                       </Button>
                     </>
                   ) : (
-                    <>
-                      <div className="space-y-3">
-                        <video
-                          ref={videoRef}
-                          autoPlay
-                          playsInline
-                          className="w-full h-64 object-cover rounded-lg bg-black"
-                        />
-                        <canvas ref={canvasRef} className="hidden" />
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={capturePhoto}
-                            className="flex-1 bg-primary hover:bg-primary/90"
-                          >
-                            <Camera className="h-4 w-4 mr-2" />
-                            Capture Photo
-                          </Button>
-                          <Button
-                            onClick={() => {
-                              setCameraMode(false);
-                              stopCamera();
-                            }}
-                            variant="outline"
-                            className="flex-1"
-                          >
-                            Cancel
-                          </Button>
-                        </div>
+                    <div className="space-y-3">
+                      <video ref={videoRef} autoPlay playsInline className="w-full h-64 object-cover rounded-lg bg-black" />
+                      <canvas ref={canvasRef} className="hidden" />
+                      <div className="flex gap-2">
+                        <Button onClick={capturePhoto} className="flex-1 bg-primary hover:bg-primary/90">
+                          <Camera className="h-4 w-4 mr-2" />
+                          Capture Photo
+                        </Button>
+                        <Button onClick={() => { setCameraMode(false); stopCamera(); }} variant="outline" className="flex-1">
+                          Cancel
+                        </Button>
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <img
-                    src={preview}
-                    alt="Selected crop"
-                    className="w-full h-64 object-cover rounded-lg"
-                  />
+                  <img src={preview} alt="Selected crop" className="w-full h-64 object-cover rounded-lg" />
                   <div className="flex gap-2">
-                    <Button
-                      onClick={uploadImage}
-                      disabled={analyzing}
-                      className="flex-1 bg-primary hover:bg-primary/90"
-                    >
+                    <Button onClick={uploadImage} disabled={analyzing} className="flex-1 bg-primary hover:bg-primary/90">
                       {analyzing ? "Analyzing..." : "Analyze Crop"}
                     </Button>
-                    <Button
-                      onClick={() => {
-                        setPreview("");
-                        setSelectedFile(null);
-                        setResult(null);
-                      }}
-                      variant="outline"
-                      className="flex-1"
-                    >
+                    <Button onClick={() => { setPreview(""); setSelectedFile(null); setResult(null); }} variant="outline" className="flex-1">
                       Change Photo
                     </Button>
                   </div>
@@ -556,39 +471,23 @@ export default function Index() {
             </div>
           </div>
 
-          {/* Results Display */}
           <div className="space-y-6">
             {result ? (
               <div className="rounded-xl border border-border bg-card overflow-hidden">
-                <div className={`bg-gradient-to-r p-6 border-b border-border ${result.infectionLevel === "HIGH"
-                  ? "from-destructive/10 to-accent/10"
-                  : "from-primary/10 to-secondary/10"
-                  }`}>
+                <div className={`bg-gradient-to-r p-6 border-b border-border ${result.infectionLevel === "HIGH" ? "from-destructive/10 to-accent/10" : "from-primary/10 to-secondary/10"}`}>
                   <div className="flex items-center gap-2 mb-2">
-                    {result.infectionLevel === "HIGH" ? (
-                      <AlertCircle className="h-5 w-5 text-destructive" />
-                    ) : (
-                      <Leaf className="h-5 w-5 text-primary" />
-                    )}
-                    <h3 className="text-xl font-semibold text-foreground">
-                      Analysis Results
-                    </h3>
+                    {result.infectionLevel === "HIGH" ? <AlertCircle className="h-5 w-5 text-destructive" /> : <Leaf className="h-5 w-5 text-primary" />}
+                    <h3 className="text-xl font-semibold text-foreground">Analysis Results</h3>
                   </div>
                 </div>
 
                 <div className="p-6 space-y-6">
-                  {/* Primary Result Summary */}
                   <div className="rounded-lg bg-muted/30 border border-border p-4 text-center">
                     <p className="text-sm text-muted-foreground uppercase tracking-wider mb-1">Primary Detection</p>
-                    <h4 className="text-2xl font-bold text-foreground">
-                      {formatLabel(result.disease1.name).split(': ')[1] || "Healthy"}
-                    </h4>
-                    <p className="text-sm font-medium text-primary mt-1">
-                      {result.disease1.percent}% Confidence Score
-                    </p>
+                    <h4 className="text-2xl font-bold text-foreground">{formatLabel(result.disease1.name).split(': ')[1] || "Healthy"}</h4>
+                    <p className="text-sm font-medium text-primary mt-1">{result.disease1.percent}% Confidence Score</p>
                   </div>
 
-                  {/* Detailed Information */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-3 rounded-lg border border-border bg-background">
                       <p className="text-xs text-muted-foreground mb-1">Plant Type</p>
@@ -596,14 +495,10 @@ export default function Index() {
                     </div>
                     <div className={`p-3 rounded-lg border border-border ${result.recommendSpray ? "bg-destructive/5 border-destructive/20" : "bg-primary/5 border-primary/20"}`}>
                       <p className="text-xs text-muted-foreground mb-1">Spray Required</p>
-                      <p className={`font-bold ${result.recommendSpray ? "text-destructive" : "text-primary"}`}>
-                        {result.recommendSpray ? "YES" : "NO"}
-                      </p>
+                      <p className={`font-bold ${result.recommendSpray ? "text-destructive" : "text-primary"}`}>{result.recommendSpray ? "YES" : "NO"}</p>
                     </div>
                   </div>
 
-
-                  {/* Spray Action Section */}
                   {result.recommendSpray ? (
                     <div className="mt-4 p-4 rounded-xl bg-destructive border border-destructive/20 text-white shadow-lg shadow-destructive/20 animate-in zoom-in duration-300">
                       <div className="flex items-center gap-3 mb-4">
@@ -615,13 +510,23 @@ export default function Index() {
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <Button
-                          onClick={() => triggerSpray(getSprayTime(result.disease1.name, result.infectionLevel))}
+                          onClick={() => triggerSpray(getSprayTime(result.disease1.name, result.infectionLevel), {
+                            crop_name: result.cropType,
+                            disease_name: result.disease1.name,
+                            infection_level: result.infectionLevel,
+                            spray_type: 'Normal'
+                          })}
                           className="bg-white text-destructive hover:bg-white/90 font-bold border-none"
                         >
                           Spray Now ({getSprayTime(result.disease1.name, result.infectionLevel)}s)
                         </Button>
                         <Button
-                          onClick={() => triggerSpray(getSprayTime(result.disease1.name, result.infectionLevel, true))}
+                          onClick={() => triggerSpray(getSprayTime(result.disease1.name, result.infectionLevel, true), {
+                            crop_name: result.cropType,
+                            disease_name: result.disease1.name,
+                            infection_level: result.infectionLevel,
+                            spray_type: 'Burst'
+                          })}
                           variant="outline"
                           className="bg-transparent border-white/40 text-white hover:bg-white/10 font-bold"
                         >
@@ -639,100 +544,54 @@ export default function Index() {
                     </div>
                   )}
 
-                  <Button
-                    onClick={() => setResult(null)}
-                    variant="outline"
-                    className="w-full mt-4"
-                  >
-                    Analyze Another Plant
-                  </Button>
+                  <Button onClick={() => setResult(null)} variant="outline" className="w-full mt-4">Analyze Another Plant</Button>
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {/* Recent Alerts */}
-                <div className="rounded-xl border border-border bg-card overflow-hidden">
-                  <div className="bg-gradient-to-r from-primary/10 to-secondary/10 p-6 border-b border-border">
-                    <div className="flex items-center gap-2">
-                      <AlertCircle className="h-5 w-5 text-accent" />
-                      <h3 className="text-xl font-semibold text-foreground">
-                        Recent Alerts
-                      </h3>
-                    </div>
+              <div className="rounded-xl border border-border bg-card overflow-hidden">
+                <div className="bg-gradient-to-r from-primary/10 to-secondary/10 p-6 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-accent" />
+                    <h3 className="text-xl font-semibold text-foreground">Recent Alerts</h3>
                   </div>
-
-                  <div className="divide-y divide-border">
-                    {alerts.length > 0 ? (
-                      (showAllAlerts ? alerts : alerts.slice(0, 6)).map((alert, idx) => (
-                        <div key={idx} className="p-4 hover:bg-muted/50 transition-colors">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="font-medium text-foreground">{alert.field}</p>
-                            <p className="text-xs text-muted-foreground">{alert.timestamp}</p>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{alert.message}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-8 text-center text-muted-foreground">
-                        No recent alerts found.
-                      </div>
-                    )}
-                  </div>
-                  
-                  {alerts.length > 6 && (
-                    <div className="p-3 border-t border-border text-center">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-primary font-semibold"
-                        onClick={() => setShowAllAlerts(!showAllAlerts)}
-                      >
-                        {showAllAlerts ? "View Less" : `View More (${alerts.length - 6} more)`}
-                      </Button>
-                    </div>
-                  )}
                 </div>
 
+                <div className="divide-y divide-border">
+                  {alerts.length > 0 ? (showAllAlerts ? alerts : alerts.slice(0, 6)).map((alert, idx) => (
+                    <div key={idx} className="p-4 hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="font-medium text-foreground">{alert.field}</p>
+                        <p className="text-xs text-muted-foreground">{alert.timestamp}</p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{alert.message}</p>
+                    </div>
+                  )) : <div className="p-8 text-center text-muted-foreground">No recent alerts found.</div>}
+                </div>
+
+                {alerts.length > 6 && (
+                  <div className="p-3 border-t border-border text-center">
+                    <Button variant="ghost" size="sm" className="text-primary font-semibold" onClick={() => setShowAllAlerts(!showAllAlerts)}>
+                      {showAllAlerts ? "View Less" : `View More (${alerts.length - 6} more)`}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </section>
-        {/* Features Section */}
+
         <section className="py-12 border-t border-border">
-          <h2 className="text-2xl font-bold text-foreground mb-8 text-center">
-            Key Features
-          </h2>
+          <h2 className="text-2xl font-bold text-foreground mb-8 text-center">Key Features</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              {
-                icon: Camera,
-                title: "Real-time Capture",
-                desc: "Instant photo analysis",
-              },
-              {
-                icon: Leaf,
-                title: "AI Detection",
-                desc: "Multi-disease identification",
-              },
-              {
-                icon: Droplets,
-                title: "Smart Spraying",
-                desc: "Targeted application",
-              },
-              {
-                icon: Zap,
-                title: "Live Alerts",
-                desc: "Push notifications",
-              },
+              { icon: Camera, title: "Real-time Capture", desc: "Instant photo analysis" },
+              { icon: Leaf, title: "AI Detection", desc: "Multi-disease identification" },
+              { icon: Droplets, title: "Smart Spraying", desc: "Targeted application" },
+              { icon: Zap, title: "Live Alerts", desc: "Push notifications" },
             ].map((feature, idx) => (
-              <div
-                key={idx}
-                className="rounded-lg border border-border bg-card p-6 text-center hover:border-primary/50 transition-colors"
-              >
+              <div key={idx} className="rounded-lg border border-border bg-card p-6 text-center hover:border-primary/50 transition-colors">
                 <feature.icon className="h-8 w-8 text-primary mx-auto mb-3" />
-                <h3 className="font-semibold text-foreground mb-2">
-                  {feature.title}
-                </h3>
+                <h3 className="font-semibold text-foreground mb-2">{feature.title}</h3>
                 <p className="text-sm text-muted-foreground">{feature.desc}</p>
               </div>
             ))}
@@ -740,125 +599,50 @@ export default function Index() {
         </section>
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-border bg-muted/30 py-8 mt-12">
-        <div className="container">
-          <div className="border-t border-border pt-8 text-center text-sm text-muted-foreground">
-            <p>&copy; 2024 Precision AgroGuard. All rights reserved.</p>
-          </div>
+        <div className="container text-center text-sm text-muted-foreground">
+          <p>&copy; 2024 Precision AgroGuard. All rights reserved.</p>
         </div>
       </footer>
 
-      {/* Device Connection Modal */}
       {showDeviceModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-card rounded-xl border border-border shadow-lg w-full max-w-md">
             <div className="bg-gradient-to-r from-primary/10 to-secondary/10 p-6 border-b border-border flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                <Cpu className="h-5 w-5 text-primary" />
-                Connect ESP32 Hardware
-              </h2>
-              <button
-                onClick={() => setShowDeviceModal(false)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <h2 className="text-xl font-semibold text-foreground flex items-center gap-2"><Cpu className="h-5 w-5 text-primary" />Connect ESP32 Hardware</h2>
+              <button onClick={() => setShowDeviceModal(false)} className="text-muted-foreground hover:text-foreground"><X className="h-5 w-5" /></button>
             </div>
             <div className="p-6 space-y-4">
               {!deviceConnected ? (
-                <>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Enter the IP address of your ESP32 hardware to connect over Wi-Fi.
-                  </p>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">ESP32 IP Address</label>
-                      <input
-                        type="text"
-                        value={esp32Ip}
-                        onChange={(e) => setEsp32Ip(e.target.value)}
-                        placeholder="e.g., 192.168.0.105"
-                        className="w-full p-3 rounded-lg border border-border bg-background focus:outline-none focus:border-primary/50 text-foreground"
-                      />
-                    </div>
-                    <Button
-                      onClick={async () => {
-                        try {
-                          await fetch("/api/spray/connect", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ ip: esp32Ip })
-                          });
-                          setDeviceName(`ESP32 (${esp32Ip})`);
-                          setDeviceConnected(true);
-                        } catch (error) {
-                          alert("Failed to connect to backend");
-                        }
-                      }}
-                      className="w-full bg-primary hover:bg-primary/90"
-                    >
-                      Connect Hardware
-                    </Button>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Enter the IP address of your ESP32 hardware to connect over Wi-Fi.</p>
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">ESP32 IP Address</label>
+                    <input type="text" value={esp32Ip} onChange={(e) => setEsp32Ip(e.target.value)} placeholder="e.g., 192.168.0.105" className="w-full p-3 rounded-lg border border-border bg-background focus:outline-none focus:border-primary/50 text-foreground" />
                   </div>
-                </>
+                  <Button onClick={async () => {
+                    try {
+                      await fetch("/api/spray/connect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ip: esp32Ip }) });
+                      setDeviceName(`ESP32 (${esp32Ip})`);
+                      setDeviceConnected(true);
+                    } catch (error) { alert("Failed to connect to backend"); }
+                  }} className="w-full bg-primary hover:bg-primary/90">Connect Hardware</Button>
+                </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-                    <div className="flex items-center gap-3">
-                      <Check className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-medium text-foreground">Connected</p>
-                        <p className="text-sm text-muted-foreground">
-                          {deviceName}
-                        </p>
-                      </div>
-                    </div>
+                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-3">
+                    <Check className="h-5 w-5 text-primary" />
+                    <div><p className="font-medium text-foreground">Connected</p><p className="text-sm text-muted-foreground">{deviceName}</p></div>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-foreground">Device Info:</p>
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      <p>Connection: Wi-Fi (IP)</p>
-                      <p>Status: Active</p>
-                      <p>Endpoint Check: Passed</p>
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
-                    <p className="text-xs text-accent font-medium">
-                      ✓ Device is ready for crop analysis and targeted spraying
-                    </p>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p className="font-medium text-foreground">Device Info:</p>
+                    <p>Connection: Wi-Fi (IP)</p><p>Status: Active</p><p>Endpoint Check: Passed</p>
                   </div>
                 </div>
               )}
               <div className="flex gap-3 pt-4 border-t border-border mt-6">
-                {deviceConnected && (
-                  <Button
-                    onClick={() => {
-                      setDeviceConnected(false);
-                      setDeviceName("");
-                    }}
-                    variant="outline"
-                    className="flex-1 border-primary/20 hover:bg-primary/5"
-                  >
-                    Disconnect
-                  </Button>
-                )}
-                <Button
-                  onClick={() => setShowDeviceModal(false)}
-                  className={deviceConnected ? "flex-1" : "hidden"}
-                  variant="default"
-                >
-                  Close
-                </Button>
-                {!deviceConnected && (
-                  <Button
-                    onClick={() => setShowDeviceModal(false)}
-                    className="w-full"
-                    variant="outline"
-                  >
-                    Cancel
-                  </Button>
-                )}
+                {deviceConnected && <Button onClick={() => { setDeviceConnected(false); setDeviceName(""); }} variant="outline" className="flex-1">Disconnect</Button>}
+                <Button onClick={() => setShowDeviceModal(false)} className={deviceConnected ? "flex-1" : "w-full"} variant={deviceConnected ? "default" : "outline"}>{deviceConnected ? "Close" : "Cancel"}</Button>
               </div>
             </div>
           </div>

@@ -29,9 +29,16 @@ export default defineConfig({
         "buffer",
         "querystring",
         "child_process",
+        "fs/promises",
         // External dependencies that should not be bundled
         "express",
         "cors",
+        "dotenv",
+        "pg",
+        "multer",
+        "axios",
+        "sharp",
+        "onnxruntime-node"
       ],
       output: {
         format: "es",

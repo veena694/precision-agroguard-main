@@ -4,8 +4,6 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import testDB from "./routes/testDB.js";
-import farmRoutes from "./routes/farmRoutes.js";
-import cropRoutes from "./routes/cropRoutes.js";
 import imageRoutes from "./routes/imageRoutes.js";
 import sprayRoutes from "./routes/sprayRoutes.js";
 
@@ -29,8 +27,6 @@ export function createServer() {
 
   // Database test route
   app.use("/api/dbtest", testDB);
-  app.use("/api/farms", farmRoutes);
-  app.use("/api/crops", cropRoutes);
   app.use("/api/images", imageRoutes);
   app.use("/uploads", express.static(uploadsPath));
   app.use("/api/spray", sprayRoutes);

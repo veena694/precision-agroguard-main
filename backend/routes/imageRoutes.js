@@ -20,7 +20,11 @@ router.post("/upload", upload.single("image"), async (req, res) => {
       return res.status(400).json({ error: "Image file is required" });
     }
 
-    const cropId = String(req.body.crop_id || "").trim() || null;
+    console.log("--- New Upload Request ---");
+    console.log("File:", req.file.originalname, "Size:", req.file.size);
+    console.log("DB_URL Status:", process.env.DB_URL ? "SET" : "MISSING");
+
+
     const mimeType = req.file.mimetype;
     const originalFileName = req.file.originalname || "upload";
     const storedFileName = req.file.filename;
@@ -43,14 +47,14 @@ router.post("/upload", upload.single("image"), async (req, res) => {
         const cropPart = topLabel.split('/')[0];
         detectedCrop = cropPart.charAt(0).toUpperCase() + cropPart.slice(1);
       }
+      console.log("Analysis Result:", JSON.stringify(analysis, null, 2));
     } catch (analysisError) {
-      console.error("ANALYSIS ERROR:", analysisError);
-      analysis = { error: "AI Analysis failed" };
+      console.error("ANALYSIS ERROR (AI Service):", analysisError);
+      analysis = { error: `AI Analysis failed: ${analysisError.message}` };
     }
 
     const result = await pool.query(
       `INSERT INTO images (
-         crop_id,
          crop_name,
          crop_variety,
          original_file_name,
@@ -60,10 +64,9 @@ router.post("/upload", upload.single("image"), async (req, res) => {
          image_size_bytes,
          uploaded_at
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-       RETURNING id, crop_id, crop_name, crop_variety, original_file_name, stored_file_name, image_url, mime_type, image_size_bytes, uploaded_at`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+       RETURNING id, crop_name, crop_variety, original_file_name, stored_file_name, image_url, mime_type, image_size_bytes, uploaded_at`,
       [
-        null,
         detectedCrop,
         "Auto Detected",
         originalFileName,
@@ -100,8 +103,10 @@ router.post("/upload", upload.single("image"), async (req, res) => {
           ]
         );
       } catch (dbError) {
-        console.error("DISEASE PREDICTION SAVE ERROR:", dbError);
+        console.error("DATABASE SAVE ERROR (disease_predictions):", dbError);
       }
+    } else {
+      console.log("Skipping disease_predictions save due to analysis error or missing results");
     }
 
     res.json({
@@ -119,7 +124,7 @@ router.post("/upload", upload.single("image"), async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, crop_id, crop_name, crop_variety, original_file_name, stored_file_name, image_url, mime_type, image_size_bytes, uploaded_at
+      `SELECT id, crop_name, crop_variety, original_file_name, stored_file_name, image_url, mime_type, image_size_bytes, uploaded_at
        FROM images
        WHERE id = $1`,
       [req.params.id]
