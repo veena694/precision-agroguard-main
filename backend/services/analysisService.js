@@ -131,8 +131,8 @@ class AnalysisService {
 
       return {
         topResults: results,
-        recommendSpray: results[0].percent > 50 && !results[0].name.includes('healthy'),
-        infectionLevel: results[0].percent > 70 ? "HIGH" : results[0].percent > 40 ? "MEDIUM" : "LOW"
+        recommendSpray: results[0].percent >= 20 && !results[0].name.includes('healthy'),
+        infectionLevel: results[0].percent >= 65 ? "HIGH" : results[0].percent >= 40 ? "MEDIUM" : "LOW"
       };
     } catch (error) {
       console.error("ANALYSIS SERVICE ERROR:", error);

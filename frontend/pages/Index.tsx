@@ -9,6 +9,34 @@ type CropOption = {
   planting_date: string | null;
 };
 
+const SPRAY_CONFIG: Record<string, { LOW: number; MEDIUM: number; HIGH: number }> = {
+  "tomato/early_blight": { LOW: 2, MEDIUM: 4, HIGH: 6 },
+  "tomato/late_blight": { LOW: 3, MEDIUM: 5, HIGH: 8 },
+  "tomato/bacterial_spot": { LOW: 2, MEDIUM: 4, HIGH: 6 },
+  "tomato/leaf_mold": { LOW: 2, MEDIUM: 4, HIGH: 6 },
+  "tomato/mosaic_virus": { LOW: 3, MEDIUM: 5, HIGH: 7 },
+  "tomato/septoria_leaf_spot": { LOW: 2, MEDIUM: 4, HIGH: 6 },
+  "tomato/spider_mites": { LOW: 3, MEDIUM: 5, HIGH: 7 },
+  "tomato/target_spot": { LOW: 2, MEDIUM: 4, HIGH: 6 },
+  "tomato/yellowleaf_curl_virus": { LOW: 3, MEDIUM: 5, HIGH: 7 },
+  
+  "potato/bacteria": { LOW: 2, MEDIUM: 4, HIGH: 6 },
+  "potato/early_blight": { LOW: 2, MEDIUM: 4, HIGH: 6 },
+  "potato/fungi": { LOW: 2, MEDIUM: 4, HIGH: 6 },
+  "potato/late_blight": { LOW: 3, MEDIUM: 5, HIGH: 8 },
+  "potato/pest": { LOW: 2, MEDIUM: 4, HIGH: 6 },
+  "potato/virus": { LOW: 3, MEDIUM: 5, HIGH: 7 },
+
+  "bellpepper/bacterial_spot": { LOW: 2, MEDIUM: 4, HIGH: 6 },
+
+  "eggplant/insect_pest": { LOW: 2, MEDIUM: 4, HIGH: 6 },
+  "eggplant/leaf_spot": { LOW: 2, MEDIUM: 4, HIGH: 6 },
+  "eggplant/mosaic_virus": { LOW: 3, MEDIUM: 5, HIGH: 7 },
+  "eggplant/small_leaf": { LOW: 2, MEDIUM: 4, HIGH: 6 },
+  "eggplant/white_mold": { LOW: 3, MEDIUM: 5, HIGH: 7 },
+  "eggplant/wilt": { LOW: 3, MEDIUM: 5, HIGH: 7 },
+};
+
 export default function Index() {
   const [cropOptions, setCropOptions] = useState<CropOption[]>([]);
   const [cropId, setCropId] = useState("");
@@ -39,6 +67,13 @@ export default function Index() {
     const crop = parts[0];
     const disease = parts[1];
     return `${crop.charAt(0).toUpperCase() + crop.slice(1)}: ${disease.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}`;
+  };
+
+  const getSprayTime = (disease: string, level: string, isBurst: boolean = false) => {
+    if (!disease || disease.includes('healthy')) return 0;
+    const config = SPRAY_CONFIG[disease] || { LOW: 2, MEDIUM: 4, HIGH: 6 };
+    if (isBurst) return config.LOW;
+    return config[level as keyof typeof config] || config.MEDIUM;
   };
 
   const triggerSpray = async (seconds: number) => {
@@ -351,7 +386,8 @@ export default function Index() {
               className={liveMode ? "bg-accent hover:bg-accent/90" : "bg-primary hover:bg-primary/90"}
               onClick={() => {
                 if (!liveMode) {
-                  triggerSpray(10); // Start 10s spray
+                  const time = result ? getSprayTime(result.disease1.name, result.infectionLevel) : 5;
+                  triggerSpray(time);
                 } else {
                   setLiveMode(false);
                   setSprayRemaining(0);
@@ -579,17 +615,17 @@ export default function Index() {
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <Button
-                          onClick={() => triggerSpray(10)}
+                          onClick={() => triggerSpray(getSprayTime(result.disease1.name, result.infectionLevel))}
                           className="bg-white text-destructive hover:bg-white/90 font-bold border-none"
                         >
-                          Spray Now (10s)
+                          Spray Now ({getSprayTime(result.disease1.name, result.infectionLevel)}s)
                         </Button>
                         <Button
-                          onClick={() => triggerSpray(5)}
+                          onClick={() => triggerSpray(getSprayTime(result.disease1.name, result.infectionLevel, true))}
                           variant="outline"
                           className="bg-transparent border-white/40 text-white hover:bg-white/10 font-bold"
                         >
-                          Short Burst (5s)
+                          Short Burst ({getSprayTime(result.disease1.name, result.infectionLevel, true)}s)
                         </Button>
                       </div>
                     </div>
