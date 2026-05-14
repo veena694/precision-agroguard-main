@@ -50,10 +50,10 @@ COPY --from=builder /app/models ./models
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV PORT=10000
+ENV PORT=7860
 
-# Expose the port Render uses
-EXPOSE 10000
+# Expose the port Hugging Face uses
+EXPOSE 7860
 
 # Start the application
 CMD ["node", "dist/server/node-build.mjs"]
