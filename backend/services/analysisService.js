@@ -125,9 +125,9 @@ class AnalysisService {
           percent: Math.round(prob * 100)
         }))
         .sort((a, b) => b.percent - a.percent)
-        .slice(0, 3);
+        .slice(0, 1);
 
-      console.log("Analysis completed successfully:", results);
+      console.log("Primary Detection:", results[0]);
 
       return {
         topResults: results,
