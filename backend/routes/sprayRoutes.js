@@ -5,7 +5,7 @@ import pool from "../../database/db.js";
 const router = express.Router();
 
 // ESP32 IP definition, mutable by frontend
-let ESP32_IP = "http://192.168.0.105";
+let ESP32_IP = "http://10.57.42.207";
 
 router.post("/connect", (req, res) => {
   const { ip } = req.body;
