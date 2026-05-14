@@ -120,7 +120,7 @@ export default function Index() {
         console.warn("Backend logged the spray but couldn't reach hardware:", data.error);
         // Only show alert if direct browser trigger also failed
         if (!directSuccess) {
-          alert(`Warning: ${data.error}\n\nSince this site is deployed, the backend cannot reach your local IP. Please use the 'Connect Device' settings to see how to fix this.`);
+          alert(`🚀 ACTION REQUIRED: Hardware Trigger Failed\n\nSince this site is deployed on the cloud, the backend cannot reach your local IP (${esp32Ip}).\n\nTO FIX THIS:\n1. Try using HTTP instead of HTTPS (replace https:// with http:// in the address bar).\n2. OR use ngrok to get a public URL for your ESP32.\n\nClick 'Connect Device' in the header for step-by-step instructions.`);
         }
       }
     } catch (error) {
@@ -646,10 +646,18 @@ export default function Index() {
                   <p className="text-sm text-muted-foreground">Enter the IP address or public URL of your ESP32 hardware.</p>
                   
                   {window.location.protocol === 'https:' && (
-                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-500">
-                      <strong>Note:</strong> This site is running on HTTPS. Browsers block local IP calls (192.168.x.x) for security.
-                      <br /><br />
-                      <strong>Fix:</strong> Use <a href="https://ngrok.com" target="_blank" rel="noreferrer" className="underline font-bold">ngrok</a> to get a public URL for your ESP32, or allow "Insecure Content" in your browser site settings.
+                    <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 space-y-3">
+                      <p className="font-bold">⚠️ Cloud Deployment Detected</p>
+                      <p>Because this site is running on <strong>HTTPS</strong> and the backend is in the <strong>Cloud</strong>, it cannot talk to your local IP address directly.</p>
+                      
+                      <div className="space-y-2">
+                        <p className="font-bold underline">Pick one way to fix this:</p>
+                        <ol className="list-decimal ml-4 space-y-1">
+                          <li><strong>Easiest:</strong> Use <a href={window.location.href.replace('https://', 'http://')} className="underline font-bold text-amber-700">HTTP Version</a> of this site. This allows your browser to talk directly to your hardware.</li>
+                          <li><strong>Best:</strong> Use <a href="https://ngrok.com" target="_blank" rel="noreferrer" className="underline font-bold text-amber-700">ngrok</a>. Run it on your PC to get a public URL (e.g., <code>https://your-id.ngrok.app</code>) and paste it below.</li>
+                          <li><strong>Settings:</strong> Click the "Lock" icon in your browser address bar -> Site Settings -> allow <strong>"Insecure content"</strong>.</li>
+                        </ol>
+                      </div>
                     </div>
                   )}
 
