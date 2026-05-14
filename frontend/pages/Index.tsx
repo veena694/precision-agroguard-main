@@ -85,17 +85,44 @@ export default function Index() {
         });
       }, 1000);
 
+      // 1. Attempt direct trigger from browser (works if on local network and browser allows it)
+      let directSuccess = false;
+      if (esp32Ip) {
+        try {
+          const espUrl = esp32Ip.startsWith('http') ? esp32Ip : `http://${esp32Ip}`;
+          // Use 'no-cors' mode as ESP32 usually doesn't have CORS headers
+          // and 'no-cors' doesn't trigger preflight, but we can't see result
+          await fetch(`${espUrl}/spray?time=${seconds}`, { 
+            mode: 'no-cors',
+            credentials: 'omit'
+          });
+          console.log("Browser attempted direct hardware trigger");
+          directSuccess = true;
+        } catch (e) {
+          console.warn("Direct browser trigger failed (expected on HTTPS):", e);
+        }
+      }
+
       const payload = {
         duration: seconds,
         ...details
       };
-      console.log("Triggering spray with payload:", payload);
+      console.log("Triggering spray via backend:", payload);
 
-      await fetch("/api/spray", {
+      const response = await fetch("/api/spray", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
+
+      const data = await response.json();
+      if (data.status === "partial_success") {
+        console.warn("Backend logged the spray but couldn't reach hardware:", data.error);
+        // Only show alert if direct browser trigger also failed
+        if (!directSuccess) {
+          alert(`Warning: ${data.error}\n\nSince this site is deployed, the backend cannot reach your local IP. Please use the 'Connect Device' settings to see how to fix this.`);
+        }
+      }
     } catch (error) {
       console.error("Failed to trigger spray:", error);
       setLiveMode(false);
@@ -616,16 +643,37 @@ export default function Index() {
             <div className="p-6 space-y-4">
               {!deviceConnected ? (
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">Enter the IP address of your ESP32 hardware to connect over Wi-Fi.</p>
+                  <p className="text-sm text-muted-foreground">Enter the IP address or public URL of your ESP32 hardware.</p>
+                  
+                  {window.location.protocol === 'https:' && (
+                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-500">
+                      <strong>Note:</strong> This site is running on HTTPS. Browsers block local IP calls (192.168.x.x) for security.
+                      <br /><br />
+                      <strong>Fix:</strong> Use <a href="https://ngrok.com" target="_blank" rel="noreferrer" className="underline font-bold">ngrok</a> to get a public URL for your ESP32, or allow "Insecure Content" in your browser site settings.
+                    </div>
+                  )}
+
                   <div>
-                    <label className="text-sm font-medium text-foreground mb-2 block">ESP32 IP Address</label>
-                    <input type="text" value={esp32Ip} onChange={(e) => setEsp32Ip(e.target.value)} placeholder="e.g., 192.168.0.105" className="w-full p-3 rounded-lg border border-border bg-background focus:outline-none focus:border-primary/50 text-foreground" />
+                    <label className="text-sm font-medium text-foreground mb-2 block">ESP32 IP or URL</label>
+                    <input 
+                      type="text" 
+                      value={esp32Ip} 
+                      onChange={(e) => setEsp32Ip(e.target.value)} 
+                      placeholder="e.g., 192.168.0.105 or my-esp32.ngrok-free.app" 
+                      className="w-full p-3 rounded-lg border border-border bg-background focus:outline-none focus:border-primary/50 text-foreground" 
+                    />
                   </div>
                   <Button onClick={async () => {
                     try {
-                      await fetch("/api/spray/connect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ip: esp32Ip }) });
-                      setDeviceName(`ESP32 (${esp32Ip})`);
-                      setDeviceConnected(true);
+                      const response = await fetch("/api/spray/connect", { 
+                        method: "POST", 
+                        headers: { "Content-Type": "application/json" }, 
+                        body: JSON.stringify({ ip: esp32Ip }) 
+                      });
+                      if (response.ok) {
+                        setDeviceName(`ESP32 (${esp32Ip})`);
+                        setDeviceConnected(true);
+                      }
                     } catch (error) { alert("Failed to connect to backend"); }
                   }} className="w-full bg-primary hover:bg-primary/90">Connect Hardware</Button>
                 </div>
@@ -636,8 +684,11 @@ export default function Index() {
                     <div><p className="font-medium text-foreground">Connected</p><p className="text-sm text-muted-foreground">{deviceName}</p></div>
                   </div>
                   <div className="space-y-2 text-sm text-muted-foreground">
-                    <p className="font-medium text-foreground">Device Info:</p>
-                    <p>Connection: Wi-Fi (IP)</p><p>Status: Active</p><p>Endpoint Check: Passed</p>
+                    <p className="font-medium text-foreground">Status:</p>
+                    <p>Endpoint updated on server.</p>
+                    {(esp32Ip.includes('192.168.') || esp32Ip.includes('10.')) && window.location.hostname !== 'localhost' && (
+                      <p className="text-destructive font-bold">Warning: Local IP detected. Cloud backend cannot reach this device.</p>
+                    )}
                   </div>
                 </div>
               )}

@@ -17,32 +17,50 @@ router.post("/connect", (req, res) => {
 
 router.post("/", async (req, res) => {
   console.log("POST /api/spray called with body:", req.body);
+  const { duration, crop_name, disease_name, infection_level, spray_type } = req.body;
+
   try {
-    const { duration, crop_name, disease_name, infection_level, spray_type } = req.body;
-
-    // Send command to ESP32
-    await axios.get(`${ESP32_IP}/spray?time=${duration}`);
-
-    // Store log in DB
+    // 1. Store log in DB first (always do this)
     await pool.query(
       `INSERT INTO spray_logs (duration, crop_name, disease_name, infection_level, spray_type) VALUES ($1, $2, $3, $4, $5)`,
       [duration, crop_name || null, disease_name || null, infection_level || null, spray_type || 'Manual']
     );
+    console.log("Spray log saved to database");
 
-    res.json({ message: "Spray triggered" });
+    // 2. Attempt to trigger hardware
+    try {
+      console.log(`Attempting to trigger ESP32 at ${ESP32_IP}`);
+      // Use a shorter timeout for hardware calls
+      await axios.get(`${ESP32_IP}/spray?time=${duration}`, { timeout: 3000 });
+      res.json({ message: "Spray triggered and logged", status: "success" });
+    } catch (hwError) {
+      console.error("Hardware trigger failed:", hwError.message);
+      
+      // If it's a local IP and we're in production, it's a known limitation
+      const isLocalIp = ESP32_IP.includes("192.168.") || ESP32_IP.includes("10.") || ESP32_IP.includes("localhost");
+      const errorMsg = isLocalIp 
+        ? "Hardware unreachable (Local IP detected in cloud deployment). Please use a public URL or ngrok."
+        : `Hardware unreachable: ${hwError.message}`;
+        
+      res.json({ 
+        message: "Logged to database, but hardware trigger failed", 
+        error: errorMsg,
+        status: "partial_success" 
+      });
+    }
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Spray failed" });
+    console.error("Database logging failed:", error);
+    res.status(500).json({ error: "Failed to process spray request" });
   }
 });
 
 router.post("/stop", async (req, res) => {
   try {
-    await axios.get(`${ESP32_IP}/stop`);
+    await axios.get(`${ESP32_IP}/stop`, { timeout: 2000 });
     res.json({ message: "Spray stopped" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Stop failed" });
+    console.error("Stop failed:", error.message);
+    res.status(500).json({ error: "Stop failed", details: error.message });
   }
 });
 
