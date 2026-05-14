@@ -310,7 +310,7 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 via-background to-background">
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="container flex h-16 items-center justify-between">
+        <div className="container flex h-auto min-h-16 py-2 md:py-0 md:h-16 items-center justify-between flex-wrap gap-y-2">
           <div className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6">
@@ -331,9 +331,9 @@ export default function Index() {
                 </g>
               </svg>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Precision AgroGuard</h1>
-              <p className="text-xs text-muted-foreground">AI Spraying System</p>
+            <div className="min-w-0">
+              <h1 className="text-lg md:text-xl font-bold text-foreground truncate">Precision AgroGuard</h1>
+              <p className="text-[10px] md:text-xs text-muted-foreground hidden sm:block">AI Spraying System</p>
             </div>
             {liveMode && (
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20">
@@ -342,7 +342,7 @@ export default function Index() {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4 ml-auto">
             <Button
               size="sm"
               className={liveMode ? "bg-accent hover:bg-accent/90" : "bg-primary hover:bg-primary/90"}
@@ -365,8 +365,9 @@ export default function Index() {
                 }
               }}
             >
-              <Zap className={`h-4 w-4 mr-2 ${liveMode ? "animate-pulse" : ""}`} />
-              {liveMode ? (sprayRemaining > 0 ? `Live (${sprayRemaining}s)` : "Live") : "Live Mode"}
+              <Zap className={`h-4 w-4 md:mr-2 ${liveMode ? "animate-pulse" : ""}`} />
+              <span className="hidden xs:inline">{liveMode ? (sprayRemaining > 0 ? `Live (${sprayRemaining}s)` : "Live") : "Live Mode"}</span>
+              <span className="xs:hidden">{liveMode ? (sprayRemaining > 0 ? `${sprayRemaining}s` : "Live") : "Live"}</span>
             </Button>
             <Button size="sm" variant="outline" onClick={() => setShowDeviceModal(true)}>
               Connect Device
@@ -378,10 +379,10 @@ export default function Index() {
       <main className="container py-8">
         <section className="mb-12">
           <div className="mx-auto max-w-3xl text-center mb-8">
-            <h2 className="text-4xl font-bold text-foreground mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
               Intelligent Crop Protection
             </h2>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-base md:text-lg text-muted-foreground px-4">
               Real-time disease detection and targeted spraying for precision agriculture. Reduce pesticide use while maximizing yield.
             </p>
           </div>
@@ -412,7 +413,7 @@ export default function Index() {
                 <div className="space-y-4">
                   {!cameraMode ? (
                     <>
-                      <div className="border-2 border-dashed rounded-lg p-8 text-center transition-colors border-border hover:border-primary/50 cursor-pointer">
+                      <div className="border-2 border-dashed rounded-lg p-6 md:p-8 text-center transition-colors border-border hover:border-primary/50 cursor-pointer">
                         <input
                           type="file"
                           accept="image/*"
