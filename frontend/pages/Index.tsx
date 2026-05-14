@@ -99,11 +99,26 @@ export default function Index() {
         if (!response.ok) throw new Error("Failed to fetch alerts");
         const data = await response.json();
 
-        const mappedAlerts = data.map((item: any) => ({
-          field: item.crop_name || "Unknown Crop",
-          timestamp: new Date(item.detected_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " ago",
-          message: `${item.confidence_score}% ${item.disease_name.split('/').pop()?.replace('_', ' ')} detected`
-        }));
+        const mappedAlerts = data.map((item: any) => {
+          const date = new Date(item.detected_at);
+          const now = new Date();
+          const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          
+          const isToday = date.toDateString() === now.toDateString();
+          const yesterday = new Date(now);
+          yesterday.setDate(now.getDate() - 1);
+          const isYesterday = date.toDateString() === yesterday.toDateString();
+          
+          let timestamp = `${timeStr} ${date.toLocaleDateString([], { day: '2-digit', month: 'short' })}`;
+          if (isToday) timestamp = `${timeStr} Today`;
+          else if (isYesterday) timestamp = `${timeStr} Yesterday`;
+
+          return {
+            field: item.crop_name || "Unknown Crop",
+            timestamp,
+            message: `${item.confidence_score}% ${item.disease_name.split('/').pop()?.replace('_', ' ')} detected`
+          };
+        });
 
         setAlerts(mappedAlerts);
       } catch (error) {
